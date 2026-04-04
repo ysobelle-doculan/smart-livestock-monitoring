@@ -6,10 +6,10 @@ import 'package:flutter/foundation.dart'; // For debugPrint
 
 class CosmosService {
   static const String _endpoint =
-      'https://farmlinkcosmosdb.documents.azure.com:443';
+      '---';
 
   static const String _masterKey =
-      'EKfgTSLTGpiBhf7GFWWTUzzSsBgLWQ4ykLIPWyl07bwsvR3M9al1cHh6lr11aaj1Lzn1KMfgXdA6ACDbITplpg==';
+      '---';
 
   static const String _databaseId = 'farmlinkDB';
   static const String _containerId = 'Telemetry';
