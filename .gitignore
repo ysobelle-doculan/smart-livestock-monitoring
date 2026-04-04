@@ -1,0 +1,60 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+env/
+.ipynb_checkpoints/
+
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub/
+build/
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# PlatformIO / embedded
+.pio/
+.piolibdeps/
+
+# Arduino / binaries
+*.bin
+*.elf
+*.hex
+
+# Logs
+*.log
+
+# Coverage / test artifacts
+coverage/
+htmlcov/
+.pytest_cache/
+
+# Azure / local settings
+local.settings.json
+
+# Misc build outputs
+dist/
+out/
+tmp/
+temp/
