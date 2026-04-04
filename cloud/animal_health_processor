@@ -1,0 +1,115 @@
+import azure.functions as func
+import logging
+import json
+from datetime import datetime
+
+app = func.FunctionApp()
+
+# Trigger: IoT Hub (Event Hub compatible endpoint)
+@app.event_hub_message_trigger(
+    arg_name="events",
+    event_hub_name="messages/events",
+    connection="I"
+)
+# Output: Cosmos DB (H container)
+@app.cosmos_db_output(
+    arg_name="health_out",
+    database_name="f",
+    container_name="H",
+    connection="C",
+    create_if_not_exists=True
+)
+def animal_health_processor(events: func.EventHubEvent,
+                           health_out: func.Out[func.Document]) -> None:
+    """
+    For each IoT message:
+    - Parse H
+    - Run simple ML/rule logic to detect sickness + cause
+    - Write result to Cosmos DB H container
+    """
+    # If batching is enabled, "events" can be a list.
+    # For simplicity, handle one event at a time.
+    if isinstance(events, list):
+        for e in events:
+            _process_one_event(e, health_out)
+    else:
+        _process_one_event(events, health_out)
+
+
+def _process_one_event(event: func.EventHubEvent,
+                       health_out: func.Out[func.Document]) -> None:
+    try:
+        body = event.get_body().decode("utf-8")
+        logging.info(f"Received IoT message: {body}")
+
+        data = json.loads(body)
+    except Exception as ex:
+        logging.error(f"Failed to parse message: {ex}")
+        return
+
+    # 1. Extract fields from t (adjust keys to match your device JSON)
+    animal_id = data.get("animalID") or data.get("deviceId") or "unknown"
+    body_temp = data.get("bdtemp") or data.get("bodyTemp")
+    amb_temp = data.get("ambTemp") or data.get("ambientTemp")
+    movement = data.get("movement")
+    humidity = data.get("humidity")
+
+    # 2. Call ML model / rules to decide isSick + cause
+    is_sick, cause, confidence = run_health_model(
+        body_temp=body_temp,
+        amb_temp=amb_temp,
+        movement=movement,
+        humidity=humidity
+    )
+
+    # 3. Build H document
+    doc = {
+        "id": f"{animal_id}-{datetime.utcnow().isoformat()}Z",
+        "animalID": animal_id,
+        "isSick": is_sick,
+        "cause": cause,
+        "confidence": confidence,
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "source": "ml-rules-v1"
+    }
+
+    # 4. Output to Cosmos DB
+    health_out.set(func.Document.from_dict(doc))
+    logging.info(f"Saved H for {animal_id}: {is_sick} ({cause})")
+
+
+def run_health_model(body_temp, amb_temp, movement, humidity):
+    """
+    Placeholder for your ML model.
+    For now: simple rule-based logic.
+    Replace this with a call to Azure ML endpoint later.
+    """
+    # Default values
+    is_sick = False
+    cause = "Normal"
+    confidence = 0.6
+
+    try:
+        if body_temp is not None:
+            body_temp = float(body_temp)
+        if amb_temp is not None:
+            amb_temp = float(amb_temp)
+    except ValueError:
+        # If conversion fails, return default
+        return is_sick, cause, confidence
+
+    # Example rules – tune to your project
+    if body_temp and body_temp > 40 and movement == "low":
+        is_sick = True
+        cause = "Possible infection (high body temp + low movement)"
+        confidence = 0.9
+    elif body_temp and body_temp > 39 and amb_temp and amb_temp > 35:
+        is_sick = True
+        cause = "Heat stress (high body temp + hot environment)"
+        confidence = 0.85
+    elif movement == "very_low":
+        is_sick = True
+        cause = "Unusual inactivity"
+        confidence = 0.75
+
+    return is_sick, cause, confidence
